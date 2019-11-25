@@ -1,0 +1,20 @@
+{
+  "name": "redusers",
+  "version": "1.0.0",
+  "description": "Express-bull-arena",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app"
+  },
+  "author": "Kasetty Koushik",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.17.1",
+    "bull": "^3.12.1",
+    "bull-arena": "^2.6.4",
+    "express": "^4.15.2",
+    "express-handlebars": "^3.0.0",
+    "method-override": "^2.3.7",
+    "redis": "^2.7.1"
+  }
+}
