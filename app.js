@@ -9,8 +9,8 @@ const Queue = require('bull');
 
 
 // Create Redis Client
-let client = redis.createClient();
-
+//let client = redis.createClient();
+let client = redis.createClient(6379, "127.0.0.1",{prefix:"TITAN"});
 client.on('connect', function(){
   console.log('Connected to Redis...');
 });
@@ -62,24 +62,28 @@ app.get('/user/add', function(req, res, next){
 
 // Process Add User Page
 app.post('/user/add', function(req, res, next){
-  let id = req.body.id;
-  let first_name = req.body.first_name;
-  let last_name = req.body.last_name;
-  let email = req.body.email;
-  let phone = req.body.phone;
+  taskQueue.add({
+  'transaction_id': req.body.id,
+  'enterprise_id': req.body.enterprise_id,
+  "instance_id": req.body.instance_id,
+  'email': req.body.email,
+  'time':req.body.time,
+  'state': req.body.state}, {removeOnComplete:false, delay: req.body.time, attempts: 3});
+  
+  res.redirect('/dashBoard');
 
-  client.hmset(id, [
-    'first_name', first_name,
-    'last_name', last_name,
-    'email', email,
-    'phone', phone
-  ], function(err, reply){
-    if(err){
-      console.log(err);
-    }
-    console.log(reply);
-    res.redirect('/');
-  });
+  // client.hmset(id, [
+  //   'enterprise_id', enterprise_id,
+  //   'last_name', last_name,
+  //   'email', email,
+  //   'phone', phone
+  // ], function(err, reply){
+  //   if(err){
+  //     console.log(err);
+  //   }
+  //   console.log(reply);
+  //   res.redirect('/dashBoard');
+  // });
 });
 
 // Delete User
@@ -95,32 +99,11 @@ app.listen(port, function(){
 
 
 const arenaConfig = Arena({
-  queues: [
-    {
-      // Name of the bull queue, this name must match up exactly with what you've defined in bull.
-      name: "First Queue",
-      // Hostname or queue prefix, you can put whatever you want.
-      hostId: "hostId",
-      // Redis auth.
-      redis: {
-        port: "6379",
-        host: "127.0.0.1"
-      },
-    },{
-      // Name of the bull queue, this name must match up exactly with what you've defined in bull.
-      name: "Second Queue",
-      // Hostname or queue prefix, you can put whatever you want.
-      hostId: "hostId",
-      // Redis auth.
-      redis: {
-        port: "6379",
-        host: "127.0.0.1"
-      },
-    },{
+  queues: [{
       // Name of the bull queue, this name must match up exactly with what you've defined in bull.
       name: "Tasks",
       // Hostname or queue prefix, you can put whatever you want.
-      hostId: "hostId",
+      hostId: "Future Dated jobs",
       // Redis auth.
       redis: {
         port: "6379",
@@ -131,7 +114,7 @@ const arenaConfig = Arena({
 },
 {
   // Make the arena dashboard become available at {my-site.com}/arena.
-  basePath: '/arena',
+  basePath: '/dashBoard',
 
   // Let express handle the listening.
   disableListen: true
@@ -141,11 +124,28 @@ app.use('/', arenaConfig);
 
 
 var taskQueue = new Queue('Tasks', {redis: {port: 6379, host: '127.0.0.1'}});
-taskQueue.process(function(job, done){
+taskQueue.process(function (job, done) {
   //console.log(job);
+  console.log(job.data)
+  console.log(job.attemptsMade)
+  if (job.attemptsMade >= 4) {
+    job.moveToCompleted();
+  } else if (job.data.state = 'failed') {
+  job.progress(19);
+  job.moveToFailed();
+  }
   done();
 });
 
-setInterval(function() {
-  taskQueue.add({from: 'someone@email.com'}, {removeOnComplete:true});
-}, 5000);
+taskQueue.on('completed', job => {
+  console.log(`Job with id ${job.id} has been completed`);
+})
+taskQueue.on('exit', function(worker, code, signal) {
+  console.log('worker ' + worker.process.pid + ' died');
+});
+
+
+    // taskQueue.add({from: 'someone@email.com'}, {removeOnComplete:true, repeat: {
+    //   every: 10000,
+    //   limit: 10
+    // }});
