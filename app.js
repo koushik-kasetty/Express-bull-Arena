@@ -6,7 +6,7 @@ const methodOverride = require('method-override');
 const redis = require('redis');
 const Arena = require('bull-arena');
 const Queue = require('bull');
-
+const stateChange = require('./states')
 
 // Create Redis Client
 //let client = redis.createClient();
@@ -125,16 +125,35 @@ app.use('/', arenaConfig);
 
 var taskQueue = new Queue('Tasks', {redis: {port: 6379, host: '127.0.0.1'}});
 taskQueue.process(function (job, done) {
-  //console.log(job);
-  console.log(job.data)
-  console.log(job.attemptsMade)
-  if (job.attemptsMade >= 4) {
+  console.log(job.data);
+  if (job.attemptsMade >= 3) {
+    job.progress(100);
     job.moveToCompleted();
-  } else if (job.data.state = 'failed') {
-  job.progress(19);
-  job.moveToFailed();
+    done(); 
+  } else if (job.data.state == 'failed') {
+    job.progress(19);
+    job.moveToFailed();
+  } else if (job.data.state == 'active') {
+    console.log("into active state");
+    for (var i = 0; i <= 5; i++) {
+      (function (i) {
+        setTimeout(function () {
+          job.progress(i*20);
+          if(i*20==100) done();
+        }, 4000*i);
+      })(i);
+    };
+  }else if (job.data.state == 'wait') {
+    console.log("into waiting state")
+    job.isWaiting= false;
+
+    stateChange.callSomething().then( ()=>{
+      done();
+    }).catch(error =>{
+      job.moveToFailed();
+    })
+   // return Promise.resolve();
   }
-  done();
 });
 
 taskQueue.on('completed', job => {
