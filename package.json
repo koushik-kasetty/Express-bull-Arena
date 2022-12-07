@@ -9,10 +9,10 @@
   "author": "Kasetty Koushik",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.17.1",
+    "body-parser": "^1.20.1",
     "bull": "^3.12.1",
     "bull-arena": "^2.6.4",
-    "express": "^4.15.2",
+    "express": "^4.18.2",
     "express-handlebars": "^3.0.0",
     "method-override": "^2.3.7",
     "redis": "^2.7.1"
